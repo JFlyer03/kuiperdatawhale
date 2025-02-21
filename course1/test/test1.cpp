@@ -59,6 +59,7 @@ TEST(test_arma, matmul) {
   ASSERT_EQ(approx_equal(out_matrix1, out_matrix2, "absdiff", 1e-5), true);
 }
 
+// 测试矩阵点积
 TEST(test_arma, pointwise) {
   using namespace arma;
   fmat in_matrix1 = "1,2,3;"

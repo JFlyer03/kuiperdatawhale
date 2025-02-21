@@ -23,8 +23,8 @@ TEST(test_ir, pnnx_graph_ops) {
   /**
    * 如果这里加载失败，请首先考虑相对路径的正确性问题
    */
-  std::string bin_path("course3/model_file/test_linear.pnnx.bin");
-  std::string param_path("course3/model_file/test_linear.pnnx.param");
+  std::string bin_path("course3/model_file/test_linear.pnnx.bin");  // 权重文件
+  std::string param_path("course3/model_file/test_linear.pnnx.param");  // 网络结构定义
   std::unique_ptr<pnnx::Graph> graph = std::make_unique<pnnx::Graph>();
   int load_result = graph->load(param_path, bin_path);
   // 如果这里加载失败，请首先考虑相对路径(bin_path和param_path)的正确性问题
@@ -51,12 +51,13 @@ TEST(test_ir, pnnx_graph_operands) {
   for (int i = 0; i < ops.size(); ++i) {
     const auto &op = ops.at(i);
     LOG(INFO) << "OP Name: " << op->name;
+    // 输入张量
     LOG(INFO) << "OP Inputs";
     for (int j = 0; j < op->inputs.size(); ++j) {
       LOG(INFO) << "Input name: " << op->inputs.at(j)->name
                 << " shape: " << ShapeStr(op->inputs.at(j)->shape);
     }
-
+    // 输出张量
     LOG(INFO) << "OP Output";
     for (int j = 0; j < op->outputs.size(); ++j) {
       LOG(INFO) << "Output name: " << op->outputs.at(j)->name
@@ -96,12 +97,12 @@ TEST(test_ir, pnnx_graph_operands_and_params) {
       LOG(INFO) << "Output name: " << op->outputs.at(j)->name
                 << " shape: " << ShapeStr(op->outputs.at(j)->shape);
     }
-
+    // 参数
     LOG(INFO) << "Params";
     for (const auto &attr : op->params) {
       LOG(INFO) << attr.first << " type " << attr.second.type;
     }
-
+    // 权重
     LOG(INFO) << "Weight: ";
     for (const auto &weight : op->attrs) {
       LOG(INFO) << weight.first << " : " << ShapeStr(weight.second.shape)

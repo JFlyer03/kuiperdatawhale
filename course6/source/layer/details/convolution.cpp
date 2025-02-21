@@ -80,11 +80,11 @@ InferStatus ConvolutionLayer::Forward(
     return InferStatus::kInferFailedStrideParameterError;
   }
 
-  const uint32_t kernel_count = this->weights_.size();
-  const uint32_t kernel_h = this->weights_.at(0)->rows();
-  const uint32_t kernel_w = this->weights_.at(0)->cols();
-  const uint32_t kernel_c = this->weights_.at(0)->channels();
-  const uint32_t row_len = kernel_h * kernel_w;
+  const uint32_t kernel_count = this->weights_.size();      // 卷积核个数
+  const uint32_t kernel_h = this->weights_.at(0)->rows(); // 卷积核高度
+  const uint32_t kernel_w = this->weights_.at(0)->cols(); // 卷积核宽度
+  const uint32_t kernel_c = this->weights_.at(0)->channels(); // 卷积核通道数
+  const uint32_t row_len = kernel_h * kernel_w;             // 卷积核展平后的长度
   CHECK(kernel_h > 0 && kernel_w > 0 && kernel_c > 0)
       << "The size of kernel matrix in the convolution layer should be greater "
          "than zero";
@@ -98,6 +98,7 @@ InferStatus ConvolutionLayer::Forward(
   const uint32_t kernel_count_group = kernel_count / groups_;
   const uint32_t batch_size = inputs.size();
 
+  // 将卷积核展平
   if (kernel_matrix_arr_.empty()) {
     this->InitIm2ColWeight();
   }
@@ -113,15 +114,15 @@ InferStatus ConvolutionLayer::Forward(
   }
 
   for (uint32_t i = 0; i < batch_size; ++i) {
-    const std::shared_ptr<Tensor<float>>& input = inputs.at(i);
+    const std::shared_ptr<Tensor<float>>& input = inputs.at(i);   // 输入特征图
     CHECK(input != nullptr && !input->empty())
         << "The input tensor array in the convolution layer has an empty  "
            "tensor "
         << i << " th";
 
-    const uint32_t input_c = input->channels();
-    const uint32_t input_padded_h = input->rows() + 2 * padding_h_;
-    const uint32_t input_padded_w = input->cols() + 2 * padding_w_;
+    const uint32_t input_c = input->channels();                     // 输入特征图通道数
+    const uint32_t input_padded_h = input->rows() + 2 * padding_h_; // 输入特征图填充后的高度
+    const uint32_t input_padded_w = input->cols() + 2 * padding_w_; // 输入特征图填充后的宽度
 
     const uint32_t output_h =
         std::floor((int(input_padded_h) - int(kernel_h)) / stride_h_ + 1);
@@ -136,16 +137,17 @@ InferStatus ConvolutionLayer::Forward(
       CHECK(input_c % groups_ == 0);
     }
 
-    uint32_t col_len = output_h * output_w;
+    uint32_t col_len = output_h * output_w;   // 卷积计算的次数
     CHECK(col_len > 0) << "Output_h x output_w for the convolution layer "
                           "should be greater than zero "
                        << i << " th";
 
-    uint32_t input_c_group = input_c / groups_;
+    uint32_t input_c_group = input_c / groups_;   // 每个group处理的通道数量
     CHECK(input_c_group == kernel_c) << "The number of channel for the kernel "
                                         "matrix and input tensor do not match";
 
     for (uint32_t g = 0; g < groups_; ++g) {
+      // 将该组的输入通道进行展开
       const auto& input_matrix =
           Im2Col(input, kernel_w, kernel_h, input->cols(), input->rows(),
                  input_c_group, g, row_len, col_len);
@@ -178,27 +180,40 @@ InferStatus ConvolutionLayer::Forward(
   }
   return InferStatus::kInferSuccess;
 }
-
+/*
+ *1. input : 输入特征图像
+ *2. kernel_* : 卷积核的大小
+ *3. input_* : 输入特征图像的尺寸大小，也就是input的尺寸大小
+ *4. input_c_group : 每个group处理的通道数量，如前文所叙，我们会 将输入特征图的通道按照组数进行切分
+ *5. group : 当前进行Im2Col的组数(group)
+ *6. row_len : Kernel_w * Kernel_h
+ *7. col_len : 卷积计算的次数，也就是卷积窗口滑动的次数
+ */
 arma::fmat ConvolutionLayer::Im2Col(sftensor input, uint32_t kernel_w,
                                     uint32_t kernel_h, uint32_t input_w,
                                     uint32_t input_h, uint32_t input_c_group,
                                     uint32_t group, uint32_t row_len,
                                     uint32_t col_len) const {
-  arma::fmat input_matrix(input_c_group * row_len, col_len);
+  arma::fmat input_matrix(input_c_group * row_len, col_len);  // 存储对输入图像展开后的矩阵
   const uint32_t input_padded_h = input_h + 2 * padding_h_;
   const uint32_t input_padded_w = input_w + 2 * padding_w_;
   const float padding_value = 0.f;
   for (uint32_t ic = 0; ic < input_c_group; ++ic) {
-    float* input_channel_ptr =
-        input->matrix_raw_ptr(ic + group * input_c_group);
-    uint32_t current_col = 0;
+    // 获取当前通道的输入
+    float* input_channel_ptr = input->matrix_raw_ptr(ic + group * input_c_group);
+    uint32_t current_col = 0;   // 当前卷积窗口滑动的位置
+    // 当前通道的展开应该放在哪个行位置
+    // 因为多个通道同一位置是横向摆放的
     uint32_t channel_row = ic * row_len;
+    // 表示在一个输入通道上进行滑动
     for (uint32_t w = 0; w < input_padded_w - kernel_w + 1; w += stride_w_) {
       for (uint32_t r = 0; r < input_padded_h - kernel_h + 1; r += stride_h_) {
         float* input_matrix_ptr =
             input_matrix.colptr(current_col) + channel_row;
         current_col += 1;
         for (uint32_t kw = 0; kw < kernel_w; ++kw) {
+          // w是窗口所在的列 kw是窗口内当前的偏移量
+          // r是卷积窗口所在的行，kh是窗口内的行偏移量
           const uint32_t region_w = input_h * (w + kw - padding_w_);
           for (uint32_t kh = 0; kh < kernel_h; ++kh) {
             if ((kh + r >= padding_h_ && kw + w >= padding_w_) &&
@@ -223,6 +238,7 @@ void ConvolutionLayer::ConvGemmBias(
     const arma::fmat& input_matrix, sftensor output_tensor, uint32_t group,
     uint32_t kernel_index, uint32_t kernel_count_group,
     const arma::frowvec& kernel, uint32_t output_w, uint32_t output_h) const {
+  //  定位输出矩阵所在的位置，映射，修改output也会改变output_tensor
   arma::fmat output(
       output_tensor->matrix_raw_ptr(kernel_index + group * kernel_count_group),
       output_h, output_w, false, true);
@@ -246,7 +262,7 @@ void ConvolutionLayer::ConvGemmBias(
 }
 
 void ConvolutionLayer::InitIm2ColWeight() {
-  const uint32_t kernel_count = this->weights_.size();
+  const uint32_t kernel_count = this->weights_.size();  // 卷积核的数量
   CHECK(kernel_count > 0) << "kernel count must greater than zero";
   const uint32_t kernel_h = this->weights_.at(0)->rows();
   const uint32_t kernel_w = this->weights_.at(0)->cols();
@@ -285,6 +301,7 @@ void ConvolutionLayer::InitIm2ColWeight() {
         const std::shared_ptr<Tensor<float>>& kernel =
             this->weights_.at(k + g * kernel_count_group);
         for (uint32_t ic = 0; ic < kernel->channels(); ++ic) {
+          // 将当前通道的卷积核展开
           memcpy(kernel_matrix_c.memptr() + row_len * ic,
                  kernel->matrix_raw_ptr(ic), row_len * sizeof(float));
         }
@@ -412,7 +429,7 @@ ParseParameterAttrStatus ConvolutionLayer::GetInstance(
     return ParseParameterAttrStatus::kParameterMissingGroups;
   }
 
-  const uint32_t dims = 2;
+  const uint32_t dims = 2;    // 2维
   const std::vector<int>& kernels = kernel->value;
   const std::vector<int>& paddings = padding->value;
   const std::vector<int>& strides = stride->value;
@@ -438,8 +455,7 @@ ParseParameterAttrStatus ConvolutionLayer::GetInstance(
       groups->value, use_bias->value);
 
   // load weights
-  const std::map<std::string, std::shared_ptr<RuntimeAttribute>>& attrs =
-      op->attribute;
+  const std::map<std::string, std::shared_ptr<RuntimeAttribute>>& attrs = op->attribute;
   if (use_bias->value) {
     if (attrs.find("bias") == attrs.end()) {
       LOG(ERROR) << "Can not find the bias attribute";
@@ -474,7 +490,7 @@ ParseParameterAttrStatus ConvolutionLayer::GetInstance(
   auto conv_layer_derived =
       std::dynamic_pointer_cast<ConvolutionLayer>(conv_layer);
   CHECK(conv_layer_derived != nullptr);
-  conv_layer_derived->InitIm2ColWeight();
+  conv_layer_derived->InitIm2ColWeight();   // 将卷积核进行展开
   return ParseParameterAttrStatus::kParameterAttrParseSuccess;
 }
 

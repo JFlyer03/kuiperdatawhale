@@ -49,8 +49,8 @@ void RuntimeGraph::InitGraphOperatorsInput(
     default: {
       LOG(FATAL) << "Unknown input operand type: " << input->type;
     }
-    }
-    runtime_operator->input_operands.insert({producer->name, runtime_operand});
+    }input_operands
+    runtime_operator->.insert({producer->name, runtime_operand});
     runtime_operator->input_operands_seq.push_back(runtime_operand);
   }
 }
@@ -203,8 +203,7 @@ bool RuntimeGraph::Init() {
   return true;
 }
 
-void RuntimeGraph::Build(const std::string &input_name,
-                         const std::string &output_name) {
+void RuntimeGraph::Build(const std::string &input_name, const std::string &output_name) {
   if (graph_state_ == GraphState::Complete) {
     LOG(INFO) << "Model has been built already!";
     return;
@@ -215,18 +214,15 @@ void RuntimeGraph::Build(const std::string &input_name,
     LOG_IF(FATAL, !init_graph) << "Init graph failed!";
   }
 
-  CHECK(graph_state_ >= GraphState::NeedBuild)
-      << "Graph status error, current state is " << int(graph_state_);
-  LOG_IF(FATAL, this->operators_.empty())
-      << "Graph operators is empty, may be no init";
+  CHECK(graph_state_ >= GraphState::NeedBuild) << "Graph status error, current state is " << int(graph_state_);
+  LOG_IF(FATAL, this->operators_.empty()) << "Graph operators is empty, may be no init";
 
   // 构建图关系
   for (const auto &current_op : this->operators_) {
     // 获取当前节点的所有后继节点的names，遍历根据next_op_name从operators_maps_中插入所需要的节点
     const std::vector<std::string> &output_names = current_op->output_names;
     for (const auto &kOutputName : output_names) {
-      if (const auto &output_op = this->operators_maps_.find(kOutputName);
-          output_op != this->operators_maps_.end()) {
+      if (const auto &output_op = this->operators_maps_.find(kOutputName); output_op != this->operators_maps_.end()) {
         current_op->output_operators.insert({kOutputName, output_op->second});
       }
     }

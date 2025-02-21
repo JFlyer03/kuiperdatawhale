@@ -25,6 +25,8 @@ namespace kuiper_infer {
     const std::string &RuntimeGraph::bin_path() const { return this->bin_path_; }
 
     bool RuntimeGraph::Init() {
+        // 需要先从 `PNNX::Operator` 中提取数据信息，
+        // 并依次填入到 `KuiperInfer` 对应的数据结构中
         if (this->bin_path_.empty() || this->param_path_.empty()) {
             LOG(ERROR) << "The bin path or param path is empty";
             return false;

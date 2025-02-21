@@ -51,7 +51,7 @@ class Layer {
       std::vector<std::shared_ptr<Tensor<float>>>& outputs);
 
   /**
-   * Layer的执行函数
+   * Layer的执行函数，准备输入和输出数据，并调用每个派生类算子中各自实现的计算过程
    * @param current_operator 当前的operator
    * @return 执行的状态
    */

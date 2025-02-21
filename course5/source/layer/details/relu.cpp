@@ -27,16 +27,18 @@ namespace kuiper_infer {
 InferStatus ReluLayer::Forward(
     const std::vector<std::shared_ptr<Tensor<float>>> &inputs,
     std::vector<std::shared_ptr<Tensor<float>>> &outputs) {
+  // 检查输入数组是否为空
   if (inputs.empty()) {
     LOG(ERROR) << "The input tensor array in the relu layer is empty";
     return InferStatus::kInferFailedInputEmpty;
   }
+  // 检查输入数组和输出数组中的元素（张量）个数是否相同
   if (inputs.size() != outputs.size()) {
     LOG(ERROR) << "The input and output tensor array size of the relu layer do "
                   "not match";
     return InferStatus::kInferFailedInputOutSizeMatchError;
   }
-
+  // 检查输入张量是否为空以及输入输出张量的shapes是否相同
   const uint32_t batch_size = inputs.size();
   for (uint32_t i = 0; i < batch_size; ++i) {
     const sftensor &input_data = inputs.at(i);
@@ -65,6 +67,7 @@ InferStatus ReluLayer::Forward(
 
     std::shared_ptr<Tensor<float>> output = outputs.at(i);
     if (output == nullptr || output->empty()) {
+      // 如果输出张量为空，则给输出张量分配空间以存储计算结果
       DLOG(ERROR)
           << "The output tensor array in the relu layer has an empty tensor "
           << i << " th";
@@ -81,6 +84,7 @@ InferStatus ReluLayer::Forward(
   }
   return InferStatus::kInferSuccess;
 }
+
 ParseParameterAttrStatus ReluLayer::GetInstance(
     const std::shared_ptr<RuntimeOperator> &op,
     std::shared_ptr<Layer> &relu_layer) {
@@ -89,6 +93,7 @@ ParseParameterAttrStatus ReluLayer::GetInstance(
   return ParseParameterAttrStatus::kParameterAttrParseSuccess;
 }
 
-// 使用工具类注册算子
-LayerRegistererWrapper kReluGetInstance("nn.ReLU", ReluLayer::GetInstance);
+  // 全局变量的初始化会在程序启动时自动进行
+  // 使用工具类注册算子
+  // LayerRegistererWrapper kReluGetInstance("nn.ReLU", ReluLayer::GetInstance);
 }  // namespace kuiper_infer

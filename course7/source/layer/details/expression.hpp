@@ -40,7 +40,7 @@ class ExpressionLayer : public NonParamLayer {
       std::shared_ptr<Layer>& expression_layer);
 
  private:
-  std::string statement_;
+  std::string statement_;   // 待解析的表达式
   std::unique_ptr<ExpressionParser> parser_;
 };
 }  // namespace kuiper_infer

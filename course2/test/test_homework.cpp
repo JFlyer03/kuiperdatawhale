@@ -78,7 +78,7 @@ TEST(test_homework, homework2_padding2) {
       for (int c_ = 0; c_ < tensor.cols(); ++c_) {
         if (c_ <= 1 || r <= 1) {
           ASSERT_EQ(tensor.at(c, r, c_), 3.14f);
-        } else if (c >= tensor.cols() - 1 || r >= tensor.rows() - 1) {
+        } else if (c_ >= tensor.cols() - 1 || r >= tensor.rows() - 1) {
           ASSERT_EQ(tensor.at(c, r, c_), 3.14f);
         }
         if ((r >= 2 && r <= 5) && (c_ >= 2 && c_ <= 6)) {

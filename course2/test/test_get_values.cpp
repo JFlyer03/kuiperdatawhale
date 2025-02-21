@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 TEST(test_tensor_values, tensor_values1) {
   using namespace kuiper_infer;
+  // 3d
   Tensor<float> f1(2, 3, 4);
   f1.Rand();
   f1.Show();

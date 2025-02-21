@@ -62,7 +62,7 @@ InferStatus MaxPoolingLayer::Forward(
                   "greater than 0";
     return InferStatus::kInferFailedStrideParameterError;
   }
-
+  // 判断输出大小是否符合要求
   for (uint32_t i = 0; i < batch; ++i) {
     const std::shared_ptr<ftensor>& input_data = inputs.at(i);
     if (input_data == nullptr || input_data->empty()) {
@@ -129,17 +129,16 @@ InferStatus MaxPoolingLayer::Forward(
         << i << "th";
 
     for (uint32_t ic = 0; ic < input_c; ++ic) {
-      const arma::fmat& input_channel = input_data->slice(ic);
+      const arma::fmat& input_channel = input_data->slice(ic);  // 输入通道
       arma::fmat& output_channel = output_data->slice(ic);
       for (uint32_t c = 0; c < input_padded_w - pooling_w + 1; c += stride_w_) {
-        int output_col = int(c / stride_w_);
-        for (uint32_t r = 0; r < input_padded_h - pooling_h + 1;
-             r += stride_h_) {
-          int output_row = int(r / stride_h_);
-          float* output_channel_ptr = output_channel.colptr(output_col);
+        int output_col = int(c / stride_w_);  // 输出列
+        for (uint32_t r = 0; r < input_padded_h - pooling_h + 1; r += stride_h_) {
+          int output_row = int(r / stride_h_);  // 输出行
+          float* output_channel_ptr = output_channel.colptr(output_col);  // 获取输出矩阵第 output_col 列的指针
           float max_value = std::numeric_limits<float>::lowest();
           for (uint32_t w = 0; w < pooling_w; ++w) {
-            const float* col_ptr = input_channel.colptr(c + w - padding_w_);
+            const float* col_ptr = input_channel.colptr(c + w - padding_w_);  // 不包括填充的部分列
             for (uint32_t h = 0; h < pooling_h; ++h) {
               float current_value = 0.f;
               if ((h + r >= padding_h_ && w + c >= padding_w_) &&
@@ -164,13 +163,12 @@ ParseParameterAttrStatus MaxPoolingLayer::GetInstance(
     const std::shared_ptr<RuntimeOperator>& op,
     std::shared_ptr<Layer>& max_layer) {
   CHECK(op != nullptr) << "MaxPooling get instance failed, operator is nullptr";
-  const std::map<std::string, std::shared_ptr<RuntimeParameter>>& params =
-      op->params;
+  const std::map<std::string, std::shared_ptr<RuntimeParameter>>& params = op->params;
   if (params.find("stride") == params.end()) {
     LOG(ERROR) << "Can not find the stride parameter";
     return ParseParameterAttrStatus::kParameterMissingStride;
   }
-
+  // 分别获取填充大小、步长大小和滑动窗口大小的参数值。
   auto stride =
       std::dynamic_pointer_cast<RuntimeParameterIntArray>(params.at("stride"));
   if (!stride) {
@@ -204,7 +202,7 @@ ParseParameterAttrStatus MaxPoolingLayer::GetInstance(
   const auto& padding_values = padding->value;
   const auto& stride_values = stride->value;
   const auto& kernel_values = kernel_size->value;
-
+  // 2维
   const uint32_t dims = 2;
   if (padding_values.size() != dims) {
     LOG(ERROR) << "Can not find the right padding parameter";

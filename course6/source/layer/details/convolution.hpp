@@ -52,7 +52,7 @@ class ConvolutionLayer : public ParamLayer {
                     uint32_t group, uint32_t kernel_index,
                     uint32_t kernel_count_group, const arma::frowvec& kernel,
                     uint32_t output_w, uint32_t output_h) const;
-
+// 将图像展平成矩阵
   arma::fmat Im2Col(sftensor input, uint32_t kernel_w, uint32_t kernel_h,
                     uint32_t input_w, uint32_t input_h, uint32_t input_c_group,
                     uint32_t group, uint32_t row_len, uint32_t col_len) const;
@@ -64,7 +64,7 @@ class ConvolutionLayer : public ParamLayer {
   uint32_t padding_w_ = 0;
   uint32_t stride_h_ = 1;
   uint32_t stride_w_ = 1;
-  std::vector<arma::frowvec> kernel_matrix_arr_;
+  std::vector<arma::frowvec> kernel_matrix_arr_;    // 展开后的kernel矩阵
 };
 
 }  // namespace kuiper_infer

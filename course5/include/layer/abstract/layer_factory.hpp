@@ -34,7 +34,7 @@ class LayerRegisterer {
  public:
   typedef ParseParameterAttrStatus (*Creator)(
       const std::shared_ptr<RuntimeOperator> &op,
-      std::shared_ptr<Layer> &layer);
+      std::shared_ptr<Layer> &layer);       // 定义一个函数指针
 
   typedef std::map<std::string, Creator> CreateRegistry;
  public:
@@ -51,8 +51,7 @@ class LayerRegisterer {
    * @param op 保存了初始化Layer信息的算子
    * @return 初始化后的Layer
    */
-  static std::shared_ptr<Layer> CreateLayer(
-      const std::shared_ptr<RuntimeOperator> &op);
+  static std::shared_ptr<Layer> CreateLayer(const std::shared_ptr<RuntimeOperator> &op);
 
   /**
    * 返回算子的注册表

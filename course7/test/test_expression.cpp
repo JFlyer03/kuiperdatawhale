@@ -99,7 +99,7 @@ TEST(test_parser, reverse_polish) {
   using namespace kuiper_infer;
   const std::string &str = "add(mul(@0,@1),@2)";
   ExpressionParser parser(str);
-  parser.Tokenizer();
+  parser.Tokenizer();   // 词法分析，生成tokens
   // 抽象语法树:
   //
   //       add
@@ -108,7 +108,7 @@ TEST(test_parser, reverse_polish) {
   //    /   \
   //  @0    @1
 
-  const auto &vec = parser.Generate();
+  const auto &vec = parser.Generate();  // 语法分析，生成抽象语法树，对语法树进行逆波兰变换
   for (const auto &item : vec) {
     if (item->num_index == -5) {
       LOG(INFO) << "Mul";

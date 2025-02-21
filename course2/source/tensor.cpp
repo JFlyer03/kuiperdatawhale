@@ -155,8 +155,7 @@ float& Tensor<float>::at(uint32_t channel, uint32_t row, uint32_t col) {
   return this->data_.at(row, col, channel);
 }
 
-void Tensor<float>::Padding(const std::vector<uint32_t>& pads,
-                            float padding_value) {
+void Tensor<float>::Padding(const std::vector<uint32_t>& pads, float padding_value) {
   CHECK(!this->data_.empty());
   CHECK_EQ(pads.size(), 4);
   // 四周填充的维度
@@ -166,6 +165,26 @@ void Tensor<float>::Padding(const std::vector<uint32_t>& pads,
   uint32_t pad_cols2 = pads.at(3);  // right
 
   // 请补充代码
+  uint32_t pad_row = this->rows() + pad_rows1 + pad_rows2;
+  uint32_t pad_col = this->cols() + pad_cols1 + pad_cols2;
+  uint32_t channels = this->channels();
+  arma::fcube newCube(pad_row, pad_col, channels);
+  for (int c = 0; c < newCube.n_slices; ++c) {
+    for (int r = 0; r < newCube.n_rows; ++r) {
+      for (int c_ = 0; c_ < newCube.n_cols; ++c_) {
+        if (c_ <= pad_cols1 - 1 || r <= pad_rows1 - 1) {
+          newCube.at(r, c_, c) = padding_value;
+        } else if (c_ >= pad_col - pad_cols2 || r >= pad_row - pad_rows2) {
+          newCube.at(r, c_, c) = padding_value;
+        }
+        if ((r >= pad_rows1 && r < pad_row - pad_rows2) && (c_ >= pad_cols1 && c_ < pad_col - pad_cols2)) {
+          newCube.at(r, c_, c) = this->at(c, r-pad_rows1, c_-pad_cols1);
+        }
+      }
+    }
+  }
+  this->data_ = newCube;
+  this->raw_shapes_ = {channels, pad_row, pad_col};
 }
 
 void Tensor<float>::Fill(float value) {
@@ -178,6 +197,7 @@ void Tensor<float>::Fill(const std::vector<float>& values, bool row_major) {
   const uint32_t total_elems = this->data_.size();
   CHECK_EQ(values.size(), total_elems);
   if (row_major) {
+    // 行主序
     const uint32_t rows = this->rows();
     const uint32_t cols = this->cols();
     const uint32_t planes = rows * cols;
@@ -185,11 +205,13 @@ void Tensor<float>::Fill(const std::vector<float>& values, bool row_major) {
 
     for (uint32_t i = 0; i < channels; ++i) {
       auto& channel_data = this->data_.slice(i);
+      // fmat 默认以列为主序，转换为行主序
       const arma::fmat& channel_data_t =
           arma::fmat(values.data() + i * planes, this->cols(), this->rows());
-      channel_data = channel_data_t.t();
+      channel_data = channel_data_t.t();  // 转置
     }
   } else {
+    // 列主序
     std::copy(values.begin(), values.end(), this->data_.memptr());
   }
 }
@@ -204,6 +226,11 @@ void Tensor<float>::Show() {
 void Tensor<float>::Flatten(bool row_major) {
   CHECK(!this->data_.empty());
   // 请补充代码
+  // 保存原始形状
+  const uint32_t total_elems = this->data_.size();
+
+  // reshape
+  this->Reshape({total_elems}, row_major);
 }
 
 void Tensor<float>::Rand() {
@@ -228,13 +255,11 @@ const std::vector<uint32_t>& Tensor<float>::raw_shapes() const {
   return this->raw_shapes_;
 }
 
-void Tensor<float>::Reshape(const std::vector<uint32_t>& shapes,
-                            bool row_major) {
+void Tensor<float>::Reshape(const std::vector<uint32_t>& shapes, bool row_major) {
   CHECK(!this->data_.empty());
   CHECK(!shapes.empty());
   const uint32_t origin_size = this->size();
-  const uint32_t current_size =
-      std::accumulate(shapes.begin(), shapes.end(), 1, std::multiplies());
+  const uint32_t current_size = std::accumulate(shapes.begin(), shapes.end(), 1, std::multiplies());
   CHECK(shapes.size() <= 3);
   CHECK(current_size == origin_size);
 
@@ -254,6 +279,7 @@ void Tensor<float>::Reshape(const std::vector<uint32_t>& shapes,
   }
 
   if (row_major) {
+    // 行主序
     this->Fill(values, true);
   }
 }
@@ -278,6 +304,7 @@ std::vector<float> Tensor<float>::values(bool row_major) {
     std::copy(this->data_.mem, this->data_.mem + this->data_.size(),
               values.begin());
   } else {
+    // 行主序
     uint32_t index = 0;
     for (uint32_t c = 0; c < this->data_.n_slices; ++c) {
       const arma::fmat& channel = this->data_.slice(c).t();

@@ -7,6 +7,7 @@
 
 TEST(test_tensor, tensor_init1D) {
   using namespace kuiper_infer;
+  // 一维张量
   Tensor<float> f1(4);
   f1.Fill(1.f);
   const auto &raw_shapes = f1.raw_shapes();

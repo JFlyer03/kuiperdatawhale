@@ -69,7 +69,7 @@ class ExpressionParser {
 
   /**
    * 词法分析
-   * @param retokenize 是否需要重新进行语法分析
+   * @param retokenize 是否需要重新进行词法分析
    */
   void Tokenizer(bool retokenize = false);
 

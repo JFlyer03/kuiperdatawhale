@@ -47,8 +47,8 @@ InferStatus ExpressionLayer::Forward(
 
   CHECK(this->parser_ != nullptr)
       << "The parser in the expression layer is null!";
-  this->parser_->Tokenizer(false);
-  const auto& expressions = this->parser_->tokens();
+  this->parser_->Tokenizer(false);    // 词法分析，生成tokens
+  const auto& expressions = this->parser_->tokens();  // 获取tokens
   CHECK(!expressions.empty())
       << "The expression parser failed to parse " << statement_;
 
@@ -75,11 +75,11 @@ InferStatus ExpressionLayer::Forward(
 
   std::stack<std::vector<std::shared_ptr<Tensor<float>>>> op_stack;
   const std::vector<std::shared_ptr<TokenNode>>& token_nodes =
-      this->parser_->Generate();
+      this->parser_->Generate();              // 语法分析，获取抽象语法树的逆波兰表达式
   for (const auto& token_node : token_nodes) {
     if (token_node->num_index >= 0) {
-      // process operator
-      uint32_t start_pos = token_node->num_index * batch_size;
+      // process operation
+      uint32_t start_pos = token_node->num_index * batch_size;  // 操作数的起始位置
       std::vector<std::shared_ptr<Tensor<float>>> input_token_nodes;
       for (uint32_t i = 0; i < batch_size; ++i) {
         CHECK(i + start_pos < inputs.size())
@@ -90,42 +90,66 @@ InferStatus ExpressionLayer::Forward(
       }
       op_stack.push(input_token_nodes);
     } else {
-      // process operation
+      // process operator
       const int32_t op = token_node->num_index;
-      if (op != int(TokenType::TokenAdd) && op != int(TokenType::TokenMul)) {
+      if (op != int(TokenType::TokenAdd) && op != int(TokenType::TokenMul) && op!= int(TokenType::TokenSin)) {
         LOG(FATAL) << "Unknown operator type: " << op;
       }
-      CHECK(op_stack.size() >= 2) << "The number of operand is less than two";
-      std::vector<std::shared_ptr<Tensor<float>>> input_node1 = op_stack.top();
+      if (op == int(TokenType::TokenAdd) || op == int(TokenType::TokenMul)) {
+        CHECK(op_stack.size() >= 2) << "The number of operand is less than two";
+        // 第一个操作数
+        std::vector<std::shared_ptr<Tensor<float>>> input_node1 = op_stack.top();
 
-      CHECK(input_node1.size() == batch_size)
-          << "The first operand doesn't have appropriate number of tensors, "
-             "which need "
-          << batch_size;
-      op_stack.pop();
+        CHECK(input_node1.size() == batch_size)
+            << "The first operand doesn't have appropriate number of tensors, "
+               "which need "
+            << batch_size;
+        op_stack.pop();
+        // 第二个操作数
+        std::vector<std::shared_ptr<Tensor<float>>> input_node2 = op_stack.top();
+        CHECK(input_node2.size() == batch_size)
+            << "The second operand doesn't have appropriate number of tensors, "
+               "which need "
+            << batch_size;
+        op_stack.pop();
 
-      std::vector<std::shared_ptr<Tensor<float>>> input_node2 = op_stack.top();
-      CHECK(input_node2.size() == batch_size)
-          << "The second operand doesn't have appropriate number of tensors, "
-             "which need "
-          << batch_size;
-      op_stack.pop();
-
-      std::vector<std::shared_ptr<Tensor<float>>> output_token_nodes(
-          batch_size);
-      for (uint32_t i = 0; i < batch_size; ++i) {
-        // do execution
-        if (op == int(TokenType::TokenAdd)) {
-          output_token_nodes.at(i) =
-              TensorElementAdd(input_node1.at(i), input_node2.at(i));
-        } else if (op == int(TokenType::TokenMul)) {
-          output_token_nodes.at(i) =
-              TensorElementMultiply(input_node1.at(i), input_node2.at(i));
-        } else {
-          LOG(FATAL) << "Unknown operator type: " << op;
+        std::vector<std::shared_ptr<Tensor<float>>> output_token_nodes(batch_size);
+        for (uint32_t i = 0; i < batch_size; ++i) {
+          // do execution
+          if (op == int(TokenType::TokenAdd)) {
+            output_token_nodes.at(i) =
+                TensorElementAdd(input_node1.at(i), input_node2.at(i));
+          } else if (op == int(TokenType::TokenMul)) {
+            output_token_nodes.at(i) =
+                TensorElementMultiply(input_node1.at(i), input_node2.at(i));
+          } else {
+            LOG(FATAL) << "Unknown operator type: " << op;
+          }
         }
+        op_stack.push(output_token_nodes);
+      } else {  // TokenSin
+        CHECK(op_stack.size() >= 1) << "The number of operand is less than one";
+        // 第一个操作数
+        std::vector<std::shared_ptr<Tensor<float>>> input_node = op_stack.top();
+
+        CHECK(input_node.size() == batch_size)
+            << "The first operand doesn't have appropriate number of tensors, "
+               "which need "
+            << batch_size;
+        op_stack.pop();
+
+        std::vector<std::shared_ptr<Tensor<float>>> output_token_nodes(batch_size);
+        for (uint32_t i = 0; i < batch_size; ++i) {
+          // do execution
+          if (op == int(TokenType::TokenSin)) {
+            output_token_nodes.at(i) =
+                TensorElementSin(input_node.at(i));
+          } else {
+            LOG(FATAL) << "Unknown operator type: " << op;
+          }
+        }
+        op_stack.push(output_token_nodes);
       }
-      op_stack.push(output_token_nodes);
     }
   }
 
@@ -149,7 +173,7 @@ ParseParameterAttrStatus ExpressionLayer::GetInstance(
   if (params.find("expr") == params.end()) {
     return ParseParameterAttrStatus::kParameterMissingExpr;
   }
-
+  // 从`PNNX`中提取表达式字符串`expr`，然后使用该字符串来实例化算子
   auto statement_param =
       std::dynamic_pointer_cast<RuntimeParameterString>(params.at("expr"));
   if (statement_param == nullptr) {
