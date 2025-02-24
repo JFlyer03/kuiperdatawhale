@@ -39,7 +39,7 @@ class SoftmaxLayer : public NonParamLayer {
       std::shared_ptr<Layer>& softmax_layer);
 
  private:
-  int softmax_dim_ = -1;
+  int softmax_dim_ = -1;    // 计算softmax的维度
 };
 }  // namespace kuiper_infer
 

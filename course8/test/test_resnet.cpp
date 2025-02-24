@@ -17,11 +17,14 @@ kuiper_infer::sftensor PreProcessImage(const cv::Mat &image) {
   cv::Mat resize_image;
   cv::resize(image, resize_image, cv::Size(224, 224));
 
+  // cv::Mat默认是BGR格式，需要转换为RGB格式
   cv::Mat rgb_image;
   cv::cvtColor(resize_image, rgb_image, cv::COLOR_BGR2RGB);
-
+  // 像素值转换为float格式
   rgb_image.convertTo(rgb_image, CV_32FC3);
   std::vector<cv::Mat> split_images;
+  // 将RGB图像拆分为三个通道
+  // RGBRGBRGB --> RRRGGGBBB ?
   cv::split(rgb_image, split_images);
   uint32_t input_w = 224;
   uint32_t input_h = 224;
@@ -31,21 +34,23 @@ kuiper_infer::sftensor PreProcessImage(const cv::Mat &image) {
   uint32_t index = 0;
   for (const auto &split_image : split_images) {
     assert(split_image.total() == input_w * input_h);
-    const cv::Mat &split_image_t = split_image.t();
+    const cv::Mat &split_image_t = split_image.t(); // cv::Mat默认是按行存储的，而ftensor是按列存储，需要转置
     memcpy(input->slice(index).memptr(), split_image_t.data,
            sizeof(float) * split_image.total());
     index += 1;
   }
-
-  float mean_r = 0.485f;
+  // 归一化
+  float mean_r = 0.485f;  // 均值
   float mean_g = 0.456f;
   float mean_b = 0.406f;
 
-  float var_r = 0.229f;
+  float var_r = 0.229f; // 方差
   float var_g = 0.224f;
   float var_b = 0.225f;
   assert(input->channels() == 3);
+  // [0, 255] -> [0, 1]
   input->data() = input->data() / 255.f;
+  // [0, 1] -> [-1, 1]
   input->slice(0) = (input->slice(0) - mean_r) / var_r;
   input->slice(1) = (input->slice(1) - mean_g) / var_g;
   input->slice(2) = (input->slice(2) - mean_b) / var_b;
@@ -68,9 +73,11 @@ TEST(test_network, resnet1) {
     sftensor input = PreProcessImage(image);
     inputs.push_back(input);
   }
+  // 推理
   auto outputs = graph.Forward(inputs, true);
   ASSERT_EQ(outputs.size(), batch_size);
 
+  // 后处理 softmax
   SoftmaxLayer softmax_layer(0);
   std::vector<sftensor> outputs_softmax(batch_size);
   softmax_layer.Forward(outputs, outputs_softmax);

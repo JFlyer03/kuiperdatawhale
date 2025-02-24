@@ -39,7 +39,7 @@ class Layer;
 
 /// 计算图中的计算节点
 struct RuntimeOperator {
-  bool has_forward = false;
+  bool has_forward = false;      /// 计算节点是否已经完成前向计算
   std::string name;              /// 计算节点的名称
   std::string type;              /// 计算节点的类型
   std::shared_ptr<Layer> layer;  /// 节点对应的计算Layer

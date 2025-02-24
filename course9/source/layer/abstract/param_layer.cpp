@@ -116,7 +116,7 @@ void ParamLayer::set_bias(const std::vector<float>& bias) {
   CHECK_EQ(bias_size, elem_size);
   CHECK_EQ(elem_size % batch_size, 0);
 
-  const uint32_t blob_size = elem_size / batch_size;
+  const uint32_t blob_size = elem_size / batch_size;  // 每个张量的大小
   for (uint32_t idx = 0; idx < batch_size; ++idx) {
     const uint32_t start_offset = idx * blob_size;
     const uint32_t end_offset = start_offset + blob_size;

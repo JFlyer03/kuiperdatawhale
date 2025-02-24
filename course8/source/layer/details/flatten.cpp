@@ -45,7 +45,7 @@ InferStatus FlattenLayer::Forward(
 
   int start_dim = start_dim_;
   int end_dim = end_dim_;
-  int total_dims = 4;  // NCHW
+  int total_dims = 4;  // NCHW  bacth_size, channels, rows, cols
 
   if (start_dim < 0) {
     start_dim = total_dims + start_dim;
@@ -82,7 +82,7 @@ InferStatus FlattenLayer::Forward(
            "not match "
         << i << " th";
     outputs.at(i) = output;
-
+    // NCHW
     if (start_dim == 1 && end_dim == 3) {
       output->Reshape({elements_size}, true);
     } else if (start_dim == 2 && end_dim == 3) {

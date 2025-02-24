@@ -38,8 +38,9 @@ class FlattenLayer : public NonParamLayer {
       std::shared_ptr<Layer>& flatten_layer);
 
  private:
-  int start_dim_ = 0;
-  int end_dim_ = 0;
+    // 展平操作的起始维度和结束维度
+  int start_dim_ = 0;   // 在展平操作中，从这个维度开始，将后续的维度进行合并
+  int end_dim_ = 0;     // 在展平操作中，到这个维度结束，将前面的维度进行合并
 };
 }  // namespace kuiper_infer
 #endif  // KUIPER_INFER_SOURCE_LAYER_DETAILS_FLATTEN_HPP_

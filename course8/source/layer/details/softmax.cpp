@@ -84,8 +84,8 @@ InferStatus SoftmaxLayer::Forward(
     /**
      * [...(inner size) dim ...(outer_size)
      * 将输入的数据按dim维度拆分为两部分，分别为inner和outer
-     * 开始位置到dim轴位置的数据量是inner_size,
-     * dim轴位置到结束位置的数据量是outer_sizes
+     * inner_size：表示在 dim 轴之后的维度上的索引，dim 轴之后所有维度的元素数量的乘积。
+     * outer_sizes：表示在 dim 轴之前的维度上的索引，dim 轴之前所有维度的元素数量的乘积。
      */
     const uint32_t inner_sizes = std::accumulate(
         raw_shapes.begin() + dim + 1, raw_shapes.end(), 1, std::multiplies());

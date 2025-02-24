@@ -49,7 +49,7 @@ InferStatus LinearLayer::Forward(
     return InferStatus::kInferFailedInputEmpty;
   }
 
-  if (inputs.size() != outputs.size()) {
+   if (inputs.size() != outputs.size()) {
     LOG(ERROR) << "The input and output tensor array size of linear layer do "
                   "not match";
     return InferStatus::kInferFailedInputOutSizeMatchError;
@@ -75,11 +75,13 @@ InferStatus LinearLayer::Forward(
     return InferStatus::kInferFailedBiasParameterError;
   }
 
+  // y = x * W^T + b
   uint32_t batch = inputs.size();
   const std::shared_ptr<Tensor<float>>& weight = weights_.front();
+  // 映射，修改weight_data相当于修改weight; Tensor --> arma::fmat
   arma::fmat weight_data(weight->raw_ptr(), out_features_, in_features_, false,
                          true);
-  const arma::fmat& weight_data_t = weight_data.t();
+  const arma::fmat& weight_data_t = weight_data.t();  // 转置
 
   for (uint32_t i = 0; i < batch; ++i) {
     const std::shared_ptr<Tensor<float>>& input = inputs.at(i);
@@ -89,7 +91,9 @@ InferStatus LinearLayer::Forward(
     const std::vector<uint32_t>& input_shapes = input->shapes();
 
     const uint32_t feature_dims = input_shapes.at(1);
-    const uint32_t in_features = input_shapes.at(2);
+    const uint32_t in_features = input_shapes.at(2);  // 输入特征维度
+    // CHECK(feature_dims == in_features_)
+    //     << "The feature dims of input tensor should be same to input_features_";
     CHECK(weight_data.n_rows == out_features_)
         << "The row of weight tensor should be same to output_features_";
     CHECK(weight_data.n_cols == in_features && in_features == in_features_)
@@ -118,7 +122,7 @@ InferStatus LinearLayer::Forward(
     }
 
     arma::fmat& result = output->slice(0);
-    result = input_vec * weight_data_t;
+    result = input_vec * weight_data_t; // (feature_dims,in_features) * (in_features,out_features) = (feature_dims,out_features)
     if (use_bias_) {
       CHECK(!this->bias_.empty() && this->bias_.size() == 1)
           << "The bias tensor is empty, but use_bias is true";

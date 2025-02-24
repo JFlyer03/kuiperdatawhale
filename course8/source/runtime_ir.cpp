@@ -205,6 +205,7 @@ bool RuntimeGraph::Init() {
 std::shared_ptr<Layer> RuntimeGraph::CreateLayer(
     const std::shared_ptr<RuntimeOperator> &op) {
   LOG_IF(FATAL, !op) << "Operator is empty!";
+  // 实例化 Layer
   auto layer = LayerRegisterer::CreateLayer(op);
   LOG_IF(FATAL, !layer) << "Layer init failed " << op->type;
   return layer;
@@ -259,9 +260,10 @@ std::vector<std::shared_ptr<Tensor<float>>> RuntimeGraph::Forward(
 
   for (const auto& current_op : topo_operators_) {
     if (current_op->type == "pnnx.Input") {
+      /// 输入类型算子,只需要将输入节点的输入拷贝到下一级节点
       current_op->has_forward = true;
       ProbeNextLayer(current_op, inputs);
-    } else if (current_op->type == "pnnx.Output") {
+    } else if (current_op->type == "pnnx.Output") {   /// 输出节点
       current_op->has_forward = true;
       CHECK(current_op->input_operands_seq.size() == 1);
       current_op->output_operands = current_op->input_operands_seq.front();
@@ -298,7 +300,7 @@ void RuntimeGraph::Build(const std::string &input_name,
     LOG(INFO) << "Model has been built already!";
     return;
   }
-
+  // 初始化将pnnx数据结构转化为 Kuiper 数据结构 pnnx::oprator --> RuntimeOperator
   if (graph_state_ == GraphState::NeedInit) {
     bool init_graph = Init();
     LOG_IF(FATAL, !init_graph) << "Init graph failed!";
@@ -309,7 +311,7 @@ void RuntimeGraph::Build(const std::string &input_name,
   LOG_IF(FATAL, this->operators_.empty())
           << "Graph operators is empty, may be no init";
 
-  // 构建图关系
+  // 构建图关系  填补每个RuntimeOperator 中的 output_operators
   for (const auto &current_op : this->operators_) {
     // 获取当前节点的所有后继节点的names，遍历根据next_op_name从operators_maps_中插入所需要的节点
     const std::vector<std::string> &output_names = current_op->output_names;
@@ -320,7 +322,7 @@ void RuntimeGraph::Build(const std::string &input_name,
       }
     }
   }
-
+  // 为每一个RuntimeOperator创建layer
   for (const auto &kOperator : this->operators_) {
     // 除了输入和输出节点，都创建layer
     if (kOperator->type != "pnnx.Input" && kOperator->type != "pnnx.Output") {
